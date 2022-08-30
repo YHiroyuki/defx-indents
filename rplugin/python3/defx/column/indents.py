@@ -13,13 +13,21 @@ class Column(Base):
         super().__init__(vim)
 
         self.name = 'indents'
-        self.vars = {
-            'indent1': '│ ',
-            'indent2': '├ ',
-            'indent3': '└ ',
-            'indent4': '  ',
-        }
+
         self.is_start_variable = True
+        self.vars = {
+            'last_space': '  ',
+            'space': '| ',
+            'last_file': '+ ',
+            'file': '+ ',
+        }
+        opts = self.vim.call('defx_indents#get')
+
+        for key in self.vars.keys():
+            if key in opts:
+                self.vars[key] = opts[key]
+
+        self._indent = None
 
     def on_init(self, view: View, context: Context) -> None:
         self._context = context
@@ -27,6 +35,9 @@ class Column(Base):
     def get(self, context: Context, candidate: typing.Dict[str, typing.Any]) -> str:
         if candidate['is_root']:
             return ''
+
+        # TODO キャッシュ使う
+        #      candidateを元に実施するので辞書に入れていく必要あり
 
         indents = []
         path = candidate['action__path']
@@ -38,22 +49,19 @@ class Column(Base):
 
             if i == 0:
                 if is_last:
-                    indents.insert(0, self.vars['indent3'])
+                    indents.insert(0, self.vars['last_file'])
                 else:
-                    indents.insert(0, self.vars['indent2'])
+                    indents.insert(0, self.vars['file'])
             else:
                 if is_last:
-                    indents.insert(0, self.vars['indent4'])
+                    indents.insert(0, self.vars['last_space'])
                 else:
-                    indents.insert(0, self.vars['indent1'])
+                    indents.insert(0, self.vars['space'])
             path = path.parent
 
-        return "".join(indents)
+        self._indent = "".join(indents)
+        return self._indent
 
     def length(self, context: Context) -> int:
+        # TODO 2を変数から取る
         return 2 * int(max([x['level'] for x in context.targets]))
-
-    def print(self, text: str) -> None:
-        from os.path import expanduser
-        with open(expanduser("~") + "/defx-indents.log", 'w') as f:
-            f.write(text + "\n")
