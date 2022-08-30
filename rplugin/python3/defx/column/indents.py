@@ -1,4 +1,3 @@
-import json
 from pynvim import Nvim
 import typing
 
@@ -16,52 +15,50 @@ class Column(Base):
 
         self.is_start_variable = True
         self.vars = {
-            'last_space': '  ',
-            'space': '| ',
-            'last_file': '+ ',
-            'file': '+ ',
+            'blank': '  ',
+            'branch': '| ',
+            'term': '+ ',
+            'node': '+ ',
         }
-        opts = self.vim.call('defx_indents#get')
-
-        for key in self.vars.keys():
-            if key in opts:
-                self.vars[key] = opts[key]
-
-        self._indent = None
+        self._cache = {}
+        self._length = max([len(var) for var in self.vars])
 
     def on_init(self, view: View, context: Context) -> None:
-        self._context = context
+        self._cache = {}
+        self._length = max([len(var) for var in self.vars])
+
+    def on_redraw(self, view: View, context: Context) -> None:
+        self._cache = {}
 
     def get(self, context: Context, candidate: typing.Dict[str, typing.Any]) -> str:
         if candidate['is_root']:
             return ''
 
-        # TODO キャッシュ使う
-        #      candidateを元に実施するので辞書に入れていく必要あり
-
-        indents = []
         path = candidate['action__path']
         level = candidate['level']
+        indents = []
         for i in range(level+1):
-            in_dir_name = sorted(path.parent.iterdir(), key=lambda x: (str(not x.is_dir()), x.name.lower()))
-            last_name = None if len(in_dir_name) <= 0 else in_dir_name[-1].name
-            is_last = last_name is not None and last_name == path.name
+            absolute_path = str(path)
 
+            if absolute_path not in self._cache:
+                in_dir_names = sorted(path.parent.iterdir(), key=lambda x: (str(not x.is_dir()), x.name.lower()))
+                last_name = None if len(in_dir_names) <= 0 else in_dir_names[-1].name
+                self._cache[absolute_path] = last_name is not None and last_name == path.name
+
+            is_last = self._cache[absolute_path]
             if i == 0:
                 if is_last:
-                    indents.insert(0, self.vars['last_file'])
+                    indents.insert(0, self.vars['term'])
                 else:
-                    indents.insert(0, self.vars['file'])
+                    indents.insert(0, self.vars['node'])
             else:
                 if is_last:
-                    indents.insert(0, self.vars['last_space'])
+                    indents.insert(0, self.vars['blank'])
                 else:
-                    indents.insert(0, self.vars['space'])
+                    indents.insert(0, self.vars['branch'])
             path = path.parent
 
-        self._indent = "".join(indents)
-        return self._indent
+        return "".join(indents)
 
     def length(self, context: Context) -> int:
-        # TODO 2を変数から取る
-        return 2 * int(max([x['level'] for x in context.targets]))
+        return self._length * int(max([x['level'] for x in context.targets]))
