@@ -39,13 +39,15 @@ class Column(Base):
         indents = []
         for i in range(level+1):
             absolute_path = str(path)
+            name = path.name
+            parent_path = absolute_path.rstrip(name)
 
-            if absolute_path not in self._cache:
+            if parent_path not in self._cache:
                 in_dir_names = sorted(path.parent.iterdir(), key=lambda x: (str(not x.is_dir()), x.name.lower()))
-                last_name = None if len(in_dir_names) <= 0 else in_dir_names[-1].name
-                self._cache[absolute_path] = last_name is not None and last_name == path.name
+                self._cache[parent_path] = None if len(in_dir_names) <= 0 else in_dir_names[-1].name
 
-            is_last = self._cache[absolute_path]
+            last_name = self._cache[parent_path]
+            is_last = last_name is not None and last_name == path.name
             if i == 0:
                 if is_last:
                     indents.insert(0, self.vars['term'])
