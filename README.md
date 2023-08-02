@@ -22,3 +22,4 @@ call defx#custom#column('indents', {
 ```
 ↓ like this
 <img width="914" alt="image" src="https://user-images.githubusercontent.com/8401533/187560842-21916e1d-e6ab-4b9a-aea9-43406f13c2fd.png">
+
